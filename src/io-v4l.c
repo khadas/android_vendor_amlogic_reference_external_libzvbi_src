@@ -110,6 +110,7 @@ typedef struct vbi_capture_v4l {
 static void
 v4l_read_stop(vbi_capture_v4l *v)
 {
+	if ( NULL ==  v->raw_buffer ) return;
 	for (; v->num_raw_buffers > 0; v->num_raw_buffers--) {
 		free(v->raw_buffer[v->num_raw_buffers - 1].data);
 		v->raw_buffer[v->num_raw_buffers - 1].data = NULL;
@@ -566,6 +567,7 @@ open_video_dev(vbi_capture_v4l *v, struct stat *p_vbi_stat, vbi_bool do_dev_scan
 			perm_check (v, "/dev");
 			goto done;
 		}
+		free (dirent);
 
 		while ((dirent = readdir (dir)) != NULL) {
 			char name[256];
@@ -578,14 +580,12 @@ open_video_dev(vbi_capture_v4l *v, struct stat *p_vbi_stat, vbi_bool do_dev_scan
 			video_fd = probe_video_device(v, name, p_vbi_stat);
 			if (video_fd != -1) {
 				v->p_video_name = strdup(name);
-				free (dirent);
 				closedir (dir);
 				goto done;
 			}
 		}
 		printv("Traversing finished\n");
 
-		free (dirent);
 		closedir (dir);
 	}
 	errno = ENOENT;

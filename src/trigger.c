@@ -592,9 +592,9 @@ vbi_trigger_flush(vbi_decoder *vbi)
 void
 vbi_deferred_trigger(vbi_decoder *vbi)
 {
-	vbi_trigger *t, **tp;
+	vbi_trigger *t, *tmp;
 
-	for (tp = &vbi->triggers; (t = *tp); tp = &t->next)
+	for (tmp = vbi->triggers; (t = tmp); )
 		if (t->fire <= vbi->time) {
 			vbi_event ev;
 
@@ -602,10 +602,10 @@ vbi_deferred_trigger(vbi_decoder *vbi)
 			ev.ev.trigger = &t->link;
 			vbi_send_event(vbi, &ev);
 
-			*tp = t->next;
+			tmp = t->next;
 			free(t);
 		} else
-			tp = &t->next;
+			tmp = t->next;
 }
 
 static void
@@ -614,15 +614,15 @@ add_trigger(vbi_decoder *vbi, vbi_trigger *a)
 	vbi_trigger *t;
 
 	if (a->_delete) {
-		vbi_trigger **tp;
+		vbi_trigger *tmp;
 
-		for (tp = &vbi->triggers; (t = *tp); tp = &t->next)
+		for (tmp = vbi->triggers; (t = tmp); )
 			if (strcmp((char *) a->link.url, (char *) t->link.url) == 0
 			    && fabs(a->fire - t->fire) < 0.1) {
-				*tp = t->next;
+				tmp = t->next;
 				free(t);
 			} else
-				tp = &t->next;
+				tmp = t->next;
 
 		return;
 	}

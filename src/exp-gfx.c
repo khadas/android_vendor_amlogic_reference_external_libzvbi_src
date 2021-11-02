@@ -1881,7 +1881,7 @@ xpm_export			(vbi_export *		e,
 		}
 
 		if (unlikely (!_vbi_export_grow_buffer_space (e, needed)))
-			return FALSE;
+			goto failed;
 	}
 
 	if (!xpm_write_header (e, pg, image_width, image_height,

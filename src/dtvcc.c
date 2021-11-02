@@ -218,11 +218,10 @@ xasprintf			(const char *		templ,
 	va_start (ap, templ);
 
 	r = vasprintf (&s, templ, ap);
+	va_end (ap);
 	if (r < 0 || NULL == s) {
 		return NULL;
 	}
-
-	va_end (ap);
 
 	return s;
 }
@@ -4458,8 +4457,10 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 	struct timeval now;
 	int pgno = -1;
 
+
 	if (buf[0] != 0x03)
 		return;
+	gettimeofday(&now, 0);
 	process_cc_data_flag = buf[1] & 0x40;
 	if (!process_cc_data_flag)
 	{

@@ -1000,7 +1000,7 @@ vbi_xds_demux_feed		(vbi_xds_demux *	xd,
 			break;
 		}
 
-		if (sp->count >= sizeof (sp->buffer) + 2) {
+		if (sp->count >= sizeof (sp->buffer)) {
 			log ("XDS discard packet 0x%x/0x%02x, "
 			     "buffer overflow\n",
 			     xd->curr.xds_class, xd->curr.xds_subclass);

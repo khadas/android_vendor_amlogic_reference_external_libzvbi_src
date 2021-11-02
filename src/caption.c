@@ -711,7 +711,7 @@ xds_separator(vbi_decoder *vbi, uint8_t *buf)
 		if (!sp)
 			return;
 
-		if ((sp->count < 2) || (sp->count >= 32 + 2)) {
+		if ((sp->count < 2) || (sp->count >= sizeof(sp->buffer))) {
 			XDS_SEP_DEBUG("XDS packet length overflow, discard %zu/0x%02zx\n",
 				(sp - cc->sub_packet[0]) / elements(cc->sub_packet[0]),
 				(sp - cc->sub_packet[0]) % elements(cc->sub_packet[0]));

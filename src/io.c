@@ -842,13 +842,13 @@ device_munmap			(FILE *			fp,
 		saved_errno = errno;
 
 		if (-1 == r)
-			fprintf (fp, "%d = munmap (start=%p length=%d), "
+			fprintf (fp, "%d = munmap (length=%d), "
 				 "errno=%d, %s\n",
-				 r, start, (int) length,
+				 r, (int) length,
 				 saved_errno, strerror (saved_errno));
 		else
-			fprintf (fp, "%d = munmap (start=%p length=%d)\n",
-				 r, start, (int) length);
+			fprintf (fp, "%d = munmap (length=%d)\n",
+				 r, (int) length);
 
 		errno = saved_errno;
 	}
