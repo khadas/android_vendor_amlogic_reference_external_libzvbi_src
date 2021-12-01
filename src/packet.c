@@ -2112,8 +2112,10 @@ vbi_decode_teletext(vbi_decoder *vbi, uint8_t *p)
 				curr = rvtp;
 				vtp = curr->page;
 
-				if ((vtp->pgno & 0xFF) == page)
-					break;
+				if ((vtp->pgno & 0xFF) == page) {
+					LOGI("vbi_decode_teletext vtp->pgno:%d page:%d\n",vtp->pgno, page);
+					//break;
+				}
 			}
 			switch (vtp->function) {
 			case PAGE_FUNCTION_DISCARD:

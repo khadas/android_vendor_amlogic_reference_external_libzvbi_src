@@ -112,9 +112,11 @@ static inline void flof_subpage_bar(vbi_decoder *vbi, vbi_page *pg, cache_page *
 {
 	vbi_char ac;
 	vbi_char bc;
+	vbi_char cc;
 	int n, i, ii, iii;
 	memset(&bc, 0, sizeof(bc));
 	memset(&ac, 0, sizeof(ac));
+	memset(&cc, 0, sizeof(cc));
 	ac.foreground	= VBI_WHITE;
 	ac.background	= VBI_MAGENTA;
 	ac.opacity	= VBI_OPAQUE;//pg->page_opacity[1];
@@ -125,6 +127,11 @@ static inline void flof_subpage_bar(vbi_decoder *vbi, vbi_page *pg, cache_page *
 	bc.opacity	= VBI_OPAQUE;//pg->page_opacity[1];
 	bc.unicode	= 0x0020;
 
+	cc.foreground	= VBI_WHITE;
+	cc.background	= VBI_MAGENTA;
+	cc.opacity	= VBI_OPAQUE;//pg->page_opacity[1];
+	cc.unicode	= 0x0020;
+
 	for (i = 0; i < EXT_COLUMNS; i++) {
 		pg->text[LAST_LAST_ROW + i] = bc;
 	}
@@ -132,17 +139,36 @@ static inline void flof_subpage_bar(vbi_decoder *vbi, vbi_page *pg, cache_page *
 		if (vbi->vt.current_subno == vtp->data.lop.link[i].subno) {
 			bc.background = VBI_RED;
 			ac.background = VBI_RED;
+			cc.background = VBI_RED;
 		} else {
 			bc.background = VBI_MAGENTA;
 			ac.background = VBI_MAGENTA;
+			cc.background = VBI_MAGENTA;
 		}
-		iii = i*3 + 3;
+		if ((vtp->data.lop.link[i].subno >=0 ) && (vtp->data.lop.link[i].subno < 256)) {
+			iii = i*3 + 3;
+		} else {
+			iii = i*3+4;
+			}
 		if (vtp->data.lop.link[i].subno < 10 ) {
-		n = vtp->data.lop.link[i].subno + '0';
-		if (n > '9')
-			n += 'A' - '9';
-		bc.unicode = n;
-		ac.unicode = 0x0030;
+			n = vtp->data.lop.link[i].subno + '0';
+			if (n > '9')
+				n += 'A' - '9';
+			bc.unicode = n;
+			ac.unicode = 0x0030;
+		}else if(vtp->data.lop.link[i].subno >= 256){
+			n = vtp->data.lop.link[i].subno%SUBPAGE_NUMBER_FORMATE + '0';
+			if (n > '9')
+				n += 'A' - '9';
+			cc.unicode = n;
+			n = (vtp->data.lop.link[i].subno/SUBPAGE_NUMBER_FORMATE)%SUBPAGE_NUMBER_FORMATE + '0';
+			if (n > '9')
+				n += 'A' - '9';
+			bc.unicode = n;
+			n = (vtp->data.lop.link[i].subno/(SUBPAGE_NUMBER_FORMATE*SUBPAGE_NUMBER_FORMATE))%SUBPAGE_NUMBER_FORMATE + '0';
+			if (n > '9')
+				n += 'A' - '9';
+			ac.unicode = n;
 		} else {
 			n = vtp->data.lop.link[i].subno%SUBPAGE_NUMBER_FORMATE + '0';
 			if (n > '9')
@@ -153,12 +179,22 @@ static inline void flof_subpage_bar(vbi_decoder *vbi, vbi_page *pg, cache_page *
 				n += 'A' - '9';
 			ac.unicode = n;
 		}
-		ac.foreground = VBI_BLACK;
-		bc.foreground = VBI_BLACK;
-		pg->text[LAST_LAST_ROW + iii -1] = ac;
-		pg->text[LAST_LAST_ROW + iii ] = bc;
+		if (vtp->data.lop.link[i].subno <  256) {
+			ac.foreground = VBI_BLACK;
+			bc.foreground = VBI_BLACK;
+			pg->text[LAST_LAST_ROW + iii -1] = ac;
+			pg->text[LAST_LAST_ROW + iii ] = bc;
+		} else {
+			ac.foreground = VBI_BLACK;
+			bc.foreground = VBI_BLACK;
+			cc.foreground = VBI_BLACK;
+			pg->text[LAST_LAST_ROW + iii -2] = ac;
+			pg->text[LAST_LAST_ROW + iii - 1] = bc;
+			pg->text[LAST_LAST_ROW + iii ] = cc;
+		}
 	}
 }
+
 static inline void array_sort(int *a, int len)
 {
 	int i, j, tmp;
@@ -2713,9 +2749,9 @@ vbi_format_vt_page(vbi_decoder *vbi,
 		held_mosaic_unicode = 0xEE20; /* G1 block mosaic, blank, contiguous */
 		memset(&ac, 0, sizeof(ac));
 
-		if ((ROWS - 1 ) == row) {
+		/*if ((ROWS - 1 ) == row) {
 		    break;
-		}
+		}*/
 		ac.unicode      = 0x0020;
 		ac.foreground	= ext->foreground_clut + VBI_WHITE;
 		ac.background	= ext->background_clut + VBI_BLACK;

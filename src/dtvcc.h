@@ -451,6 +451,8 @@ struct dtvcc_decoder {
 	int                             flash_state;
 	int curr_data_pgno;
 	int lang_kor;
+	vbi_bool has_dtvstart_header;
+	vbi_bool first_valid_data;/*maybe fe b4 eb, no 0x18 */
 };
 
 /* ATSC A/53 Part 4:2007 Closed Caption Data decoder. */

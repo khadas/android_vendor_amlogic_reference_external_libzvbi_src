@@ -2489,6 +2489,7 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 
 	column = dw->curr_column;
 	row = dw->curr_row;
+	AM_DEBUG(AM_DEBUG_LEVEL, "debug-cc row:%d, column:%d, dw->column:%d, c:%x", row ,column, dw->column_count, c);
 
 	/* FIXME how should we handle TEXT_TAG_NOT_DISPLAYABLE? */
 	/* Add row column lock support */
@@ -3654,16 +3655,38 @@ dtvcc_decode_se			(struct dtvcc_decoder *	dc,
 				 unsigned int		n_bytes)
 {
 	unsigned int c;
-	char* lang_korea;
-	lang_korea = strstr(dc->lang, "kor");
 
 	c = buf[0];
-	if (unlikely (c == 0x18) && lang_korea)
+	AM_DEBUG(AM_DEBUG_LEVEL, "debug-cc decode_se c:%x,n_bytes:%d", c, n_bytes);
+
+	/*fix no 0x18 byte pair*/
+	if (!dc->has_dtvstart_header) {
+		if (n_bytes > 1 && dc->first_valid_data &&  (c != 0) && (c!= 0x18) && (buf[1] != 0x18)) {
+			*se_length = 2;
+			c = buf[0]<<8|buf[1];
+			AM_DEBUG(0, "debug-cc warning!Adjust to c:%x", c);
+			dc->first_valid_data = FALSE;
+			return dtvcc_put_char (dc, ds, c);
+		}
+
+		/* fix only one byte char garbled*/
+		if (n_bytes == 1 && dc->first_valid_data) {
+			*se_length = 1;
+			dc->first_valid_data = FALSE;
+			AM_DEBUG(0, "debug-cc warning!Adjust one byte c:%x", c);
+			switch (c) {
+				case 0xdd:
+					c = 0xb9 << 8 | c;
+					return dtvcc_put_char (dc, ds, c);
+			}
+		}
+	}
+
+	if (unlikely (c == 0x18) /*&& lang_korea*/)
 	{
 		*se_length = 3;
 		c = buf[1]<<8|buf[2];
 		AM_DEBUG(0, "lang korea decode_se 0x%x", c);
-		//Conv
 
 		return dtvcc_put_char (dc, ds, c);
 	}
@@ -3818,14 +3841,16 @@ dtvcc_decode_packet		(struct dtvcc_decoder *	dc,
 	/* sequence_number [2], packet_size_code [6],
 	   packet_data [n * 8] */
 #if 1
-	sequence_number = dc->packet[0]>>6;
-	if (dc->next_sequence_number >= 0
-	    && sequence_number != dc->next_sequence_number) {
-		dtvcc_reset (dc);
-		return;
+	if (dc->has_dtvstart_header) {
+		sequence_number = dc->packet[0]>>6;
+		if (dc->next_sequence_number >= 0
+			&& sequence_number != dc->next_sequence_number) {
+			dtvcc_reset (dc);
+			return;
+		}
+		dc->next_sequence_number = (sequence_number+1)&3;
 	}
 #endif
-	dc->next_sequence_number = (sequence_number+1)&3;
 	//AM_DEBUG(0, "sn %d nsn %d", sequence_number, dc->next_sequence_number);
 	packet_size_code = dc->packet[0] & 0x3F;
 	packet_size = 128;
@@ -4442,7 +4467,75 @@ notify_curr_data_pgno(struct tvcc_decoder *td, int pgno)
 	pthread_mutex_lock(&td->mutex);
 }
 
+/* vaild_byte_pair: 0xFE start header
+	return value: vaild_byte_pair + 1(0xFF 3 bytes)
+	*/
+static char
+calc_packet_code_byte(struct dtvcc_decoder *	dc, const uint8_t * buf, int cc_count)
+{
+	uint8_t vaild_byte_pair = 0;
+	char packet_code_byte;
+	for (int i = 0; i < cc_count; ++i) {
+		if (buf[3 + i * 3] == 0xfe) {
+			vaild_byte_pair++;
+		}
+	}
 
+	packet_code_byte = (vaild_byte_pair + 1);
+	AM_DEBUG(0, "debug-cc packet_code_byte:0x%x(%d)", packet_code_byte, packet_code_byte);
+	return packet_code_byte;
+}
+
+
+static char
+calc_block_size_byte(const uint8_t * buf, int cc_count)
+{
+	uint8_t valid_data_bytes = 0;
+	char block_byte;
+	/*fe xx xx, "xx xx" is one byte pair*/
+	int vaild_byte_pair = 0;
+	for (int i = 0; i < cc_count; ++i) {
+		if (buf[3 + i * 3] == 0xfe) {
+			vaild_byte_pair++;
+		}
+	}
+	valid_data_bytes = vaild_byte_pair * 2;
+
+	for (int i = cc_count -1; i >= 0; --i) {
+		if (buf[3 + i * 3] != 0xfe) {
+			continue;
+		}
+		if (buf[5 + i * 3] != 0x0) {
+			break;
+		}
+		valid_data_bytes--;
+
+		if (buf[4 + i * 3] != 0x0) {
+			break;
+		}
+		valid_data_bytes--;
+	}
+
+	block_byte = valid_data_bytes | 0x20; /*0x20: service number:1*/
+	AM_DEBUG(0, "debug-cc valid_data_byte:%d, block_byte:0x%x", valid_data_bytes, block_byte);
+	return block_byte;
+}
+
+static vbi_bool
+dtvcc_have_start_header(const uint8_t * buf, int cc_count)
+{
+	for (int i = 0; i < cc_count - 1; ++i) {/*last byte is 0xff, so minus 1*/
+		if (buf[3 + i * 3] == 0xff) {
+			AM_DEBUG(0, "debug-cc have dtvcc start header!");
+			return TRUE;
+		}
+	}
+	AM_DEBUG(0, "debug-cc not have dtvcc start header!");
+
+	return FALSE;
+}
+
+//#define KOREAN_CALC_708_CC_HEADER
 /* Note pts may be < 0 if no PTS was received. */
 void
 tvcc_decode_data			(struct tvcc_decoder *td,
@@ -4523,6 +4616,23 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 			j = td->dtvcc.packet_size;
 			if (j <= 0) {
 				/* Missed packet start. */
+#ifdef KOREAN_CALC_708_CC_HEADER
+				if (cc_valid && b0 == 0xfe && !dtvcc && !dtvcc_have_start_header(buf, cc_count)) {
+					dtvcc = TRUE;
+					td->dtvcc.has_dtvstart_header = FALSE;
+					td->dtvcc.first_valid_data = TRUE;
+					td->dtvcc.packet[0] = calc_packet_code_byte(&td->dtvcc, buf, cc_count);//0xd1;
+					td->dtvcc.packet[1] = calc_block_size_byte(buf, cc_count);//0x3e;
+					td->dtvcc.packet_size = 2;
+					dtvcc_try_decode_packet(&td->dtvcc, &now, pts, &pgno);
+
+					j = 2;
+					td->dtvcc.packet[j] = cc_data_1;
+					td->dtvcc.packet[j + 1] = cc_data_2;
+					td->dtvcc.packet_size = j + 2;
+					dtvcc_try_decode_packet (&td->dtvcc, &now, pts, &pgno);
+				}
+#endif
 				break;
 			} else if (!cc_valid) {
 				/* End of DTVCC packet. */
@@ -4531,6 +4641,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				dtvcc_reset (&td->dtvcc);
 				td->dtvcc.packet_size = 0;
 			} else {
+				td->dtvcc.first_valid_data = FALSE;
 				td->dtvcc.packet[j] = cc_data_1;
 				td->dtvcc.packet[j + 1] = cc_data_2;
 				td->dtvcc.packet_size = j + 2;
@@ -4551,6 +4662,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 				/* No new data. */
 				td->dtvcc.packet_size = 0;
 			} else {
+				td->dtvcc.has_dtvstart_header = TRUE;
 				td->dtvcc.packet[0] = cc_data_1;
 				td->dtvcc.packet[1] = cc_data_2;
 				td->dtvcc.packet_size = 2;
