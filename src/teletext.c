@@ -50,13 +50,15 @@
 //teletext graphics subtitle blackground
 //#define TELETEXT_GRAPHICS_SUBTITLE_BLACKGROUND
 
+#define TELETEXT_GRAPHICS_SUBTITLE_PAGENUMBER_BLACKGROUND
+
 
 extern const char _zvbi_intl_domainname[];
 
 #include "intl-priv.h"
 
 #define LOG_TAG    "ZVBI"
-#ifdef ANDORID
+#ifdef ANDROID
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #else
 #define LOGI(...) printf(__VA_ARGS__)
@@ -1309,16 +1311,23 @@ character_set_designation(struct vbi_font_descr **font,
 
 	for (i = 0; i < 2; i++) {
 		int charset_code = ext->charset_code[i];
+		LOGI("i:%d charset_code:%d",i,charset_code);
 
-		if (VALID_CHARACTER_SET(charset_code))
+		if (VALID_CHARACTER_SET(charset_code)) {
+			LOGI("VALID_CHARACTER_SET 1 i:%d charset_code:%d",i,charset_code);
+			//if (0x10 == charset_code) charset_code = 0x24;
 			font[i] = vbi_font_descriptors + charset_code;
+		}
 
 		charset_code = (charset_code & ~7) + vtp->national;
 
-		if (VALID_CHARACTER_SET(charset_code))
+		if (VALID_CHARACTER_SET(charset_code)) {
+			LOGI("VALID_CHARACTER_SET 2 i:%d charset_code:%d",i,charset_code);
+			//if ( 0x14 == charset_code ) charset_code = 0x24;
 			font[i] = vbi_font_descriptors + charset_code;
-		LOGI("pgno %x font %d charset_code %d national %d final %d",
-			vtp->pgno, i, ext->charset_code[i], vtp->national, charset_code);
+			LOGI("pgno %x font %d charset_code %d national %d final %d",
+				vtp->pgno, i, ext->charset_code[i], vtp->national, charset_code);
+		}
 	}
 #endif
 }
@@ -2823,9 +2832,14 @@ vbi_format_vt_page(vbi_decoder *vbi,
 				if (mosaic && (raw & 0x20)) {
 					held_mosaic_unicode = mosaic_unicodes + raw - 0x20;
 					ac.unicode = held_mosaic_unicode;
-				} else
-					ac.unicode = vbi_teletext_unicode(font->G0,
-									  font->subset, raw);
+				} else {
+					if (row == 0 && column < 1) {
+						ac.unicode = 0x50;
+						LOGI("raw:%0x mosaic:%d\n", raw,mosaic);
+					} else {
+						ac.unicode = vbi_teletext_unicode(font->G0,font->subset, raw);
+					}
+				}
 			}
 
 			if ((vtp->flags & C10_INHIBIT_DISPLAY) && row != 0)
@@ -2920,12 +2934,20 @@ vbi_format_vt_page(vbi_decoder *vbi,
 			}
 
 			//keep bitmap subtitle first info bar data for project special requirement
-#ifdef TELETEXT_GRAPHICS_SUBTITLE_BLACKGROUND
-			if (row == 0 && vbi->vt.subtitle && vbi->vt.subtitleMode == VBI_TELETEXT_BITMAP_SUB) {
-				pg->text[column].unicode = _vbi_to_ascii((unsigned)vtp->data.lop.raw[0][column]);
-				pg->subtitleMode = VBI_TELETEXT_BITMAP_SUBTITLE;
-			}
-#endif
+			#ifdef TELETEXT_GRAPHICS_SUBTITLE_BLACKGROUND
+				if (row == 0 && vbi->vt.subtitle && vbi->vt.subtitleMode == VBI_TELETEXT_BITMAP_SUB) {
+					pg->text[column].unicode = _vbi_to_ascii((unsigned)vtp->data.lop.raw[0][column]);
+					pg->subtitleMode = VBI_TELETEXT_BITMAP_SUBTITLE;
+				}
+			#endif
+
+			//keep bitmap subtitle page number data for project special requirement
+			#ifdef TELETEXT_GRAPHICS_SUBTITLE_PAGENUMBER_BLACKGROUND
+				if (row == 0 && column < 4 && vbi->vt.subtitle && vbi->vt.subtitleMode == VBI_TELETEXT_BITMAP_SUB) {
+					pg->text[column].unicode = _vbi_to_ascii((unsigned)vtp->data.lop.raw[0][column]);
+					pg->subtitleMode = VBI_TELETEXT_BITMAP_SUBTITLE;
+				}
+			#endif
 		}
 
 
