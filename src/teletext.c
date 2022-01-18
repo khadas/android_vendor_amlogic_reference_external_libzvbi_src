@@ -51,6 +51,7 @@
 //#define TELETEXT_GRAPHICS_SUBTITLE_BLACKGROUND
 
 #define TELETEXT_GRAPHICS_SUBTITLE_PAGENUMBER_BLACKGROUND
+#define FIX_WRONG_CODE_STREAM_FOUR_COLOR_KEY
 
 
 extern const char _zvbi_intl_domainname[];
@@ -251,8 +252,15 @@ flof_navigation_bar(vbi_decoder *vbi, vbi_page *pg, cache_page *vtp)
 			pg->text[LAST_ROW + ii + k] = ac;
 			pg->nav_index[ii + k] = i;
 		}
-
+		#ifdef FIX_WRONG_CODE_STREAM_FOUR_COLOR_KEY
+		if (vbi_bcd2dec(vtp->data.lop.link[i].pgno) >= vbi_bcd2dec(0x100) && vbi_bcd2dec(vtp->data.lop.link[i].pgno) <= vbi_bcd2dec(0x899)) {
+			pg->nav_link[i].pgno = vtp->data.lop.link[i].pgno;
+		}else{
+			pg->nav_link[i].pgno = vbi_dec2bcd(vbi_bcd2dec(vbi->vt.current_pgno)+i+1);
+		}
+		#else
 		pg->nav_link[i].pgno = vtp->data.lop.link[i].pgno;
+		#endif
 		pg->nav_link[i].subno = vtp->data.lop.link[i].subno;
 	}
 	pg->have_flof = FALSE;
@@ -301,6 +309,14 @@ flof_links(vbi_page *pg, cache_page *vtp)
 static inline void draw_subpage_line(vbi_decoder *vbi, vbi_page *pg, cache_page *vtp) {
     if (vbi->vt.current_pgno == pg->pgno) {
         int temp_pgno = vbi->vt.current_pgno;
+        #ifdef FIX_WRONG_CODE_STREAM_FOUR_COLOR_KEY
+        for (int i = 0; i < 4; i++) {
+            if (vbi_bcd2dec(vtp->data.lop.link[i].pgno) < vbi_bcd2dec(0x100) || vbi_bcd2dec(vtp->data.lop.link[i].pgno) > vbi_bcd2dec(0x899)) {
+                vtp->data.lop.link[i].pgno = vbi_dec2bcd(vbi_bcd2dec(temp_pgno)+i+1);
+                LOGI("current_pgno:0x%x, red:0x%x, green:0x%x, yellow:0x%x blue:0x%x \n",temp_pgno, vtp->data.lop.link[0].pgno,vtp->data.lop.link[1].pgno,vtp->data.lop.link[2].pgno,vtp->data.lop.link[3].pgno);
+            }
+        }
+        #endif
         int subsarray[36]; //36 is the size of the vtp->data.lop.link
         int length = 36;
         vbi_bool ret = vbi_get_sub_info(vbi, temp_pgno, subsarray, &length);
