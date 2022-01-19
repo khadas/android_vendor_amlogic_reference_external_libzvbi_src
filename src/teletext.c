@@ -253,7 +253,9 @@ flof_navigation_bar(vbi_decoder *vbi, vbi_page *pg, cache_page *vtp)
 			pg->nav_index[ii + k] = i;
 		}
 		#ifdef FIX_WRONG_CODE_STREAM_FOUR_COLOR_KEY
-		if (vbi_bcd2dec(vtp->data.lop.link[i].pgno) >= vbi_bcd2dec(0x100) && vbi_bcd2dec(vtp->data.lop.link[i].pgno) <= vbi_bcd2dec(0x899)) {
+		if (vbi_bcd2dec(vtp->data.lop.link[i].pgno & 0x00F) >= vbi_bcd2dec(0x0) && vbi_bcd2dec(vtp->data.lop.link[i].pgno & 0x00F) <= vbi_bcd2dec(0x9) &&
+			vbi_bcd2dec((vtp->data.lop.link[i].pgno >> 4) & 0x00F) >=vbi_bcd2dec(0x0) && vbi_bcd2dec((vtp->data.lop.link[i].pgno >> 4) & 0x00F) <= vbi_bcd2dec(0x9) &&
+			vbi_bcd2dec((vtp->data.lop.link[i].pgno >> 8) & 0x00F) >=vbi_bcd2dec(0x1) && vbi_bcd2dec((vtp->data.lop.link[i].pgno >> 8) & 0x00F) <= vbi_bcd2dec(0x8)) {
 			pg->nav_link[i].pgno = vtp->data.lop.link[i].pgno;
 		}else{
 			pg->nav_link[i].pgno = vbi_dec2bcd(vbi_bcd2dec(vbi->vt.current_pgno)+i+1);
@@ -311,12 +313,14 @@ static inline void draw_subpage_line(vbi_decoder *vbi, vbi_page *pg, cache_page 
         int temp_pgno = vbi->vt.current_pgno;
         #ifdef FIX_WRONG_CODE_STREAM_FOUR_COLOR_KEY
         for (int i = 0; i < 4; i++) {
-            if (vbi_bcd2dec(vtp->data.lop.link[i].pgno) < vbi_bcd2dec(0x100) || vbi_bcd2dec(vtp->data.lop.link[i].pgno) > vbi_bcd2dec(0x899)) {
+            if (!(vbi_bcd2dec(vtp->data.lop.link[i].pgno & 0x00F) >= vbi_bcd2dec(0x0) && vbi_bcd2dec(vtp->data.lop.link[i].pgno & 0x00F) <= vbi_bcd2dec(0x9) &&
+                    vbi_bcd2dec((vtp->data.lop.link[i].pgno >> 4) & 0x00F) >=vbi_bcd2dec(0x0) && vbi_bcd2dec((vtp->data.lop.link[i].pgno >> 4) & 0x00F) <= vbi_bcd2dec(0x9) &&
+                    vbi_bcd2dec((vtp->data.lop.link[i].pgno >> 8) & 0x00F) >=vbi_bcd2dec(0x1) && vbi_bcd2dec((vtp->data.lop.link[i].pgno >> 8) & 0x00F) <= vbi_bcd2dec(0x8))) {
                 vtp->data.lop.link[i].pgno = vbi_dec2bcd(vbi_bcd2dec(temp_pgno)+i+1);
-                LOGI("current_pgno:0x%x, red:0x%x, green:0x%x, yellow:0x%x blue:0x%x \n",temp_pgno, vtp->data.lop.link[0].pgno,vtp->data.lop.link[1].pgno,vtp->data.lop.link[2].pgno,vtp->data.lop.link[3].pgno);
             }
         }
         #endif
+        LOGI("current_pgno:0x%x, red:0x%x, green:0x%x, yellow:0x%x blue:0x%x \n",temp_pgno, vtp->data.lop.link[0].pgno,vtp->data.lop.link[1].pgno,vtp->data.lop.link[2].pgno,vtp->data.lop.link[3].pgno);
         int subsarray[36]; //36 is the size of the vtp->data.lop.link
         int length = 36;
         vbi_bool ret = vbi_get_sub_info(vbi, temp_pgno, subsarray, &length);
