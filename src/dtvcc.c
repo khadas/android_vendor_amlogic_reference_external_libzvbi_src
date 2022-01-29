@@ -35,7 +35,14 @@
 #include "dtvcc.h"
 
 #ifdef ANDROID
-#include "am_debug.h"
+#include <android/log.h>
+#ifndef TAG_EXT
+#define TAG_EXT
+#endif
+
+#define log_print(...) __android_log_print(ANDROID_LOG_INFO, "ZVBI" TAG_EXT, __VA_ARGS__)
+#define AM_DEBUG(_level,_fmt...) \
+	log_print(_fmt)
 #else
 //for buildroot begin
 #undef AM_DEBUG
@@ -118,6 +125,11 @@ extern void
 vbi_send_event(vbi_decoder *vbi, vbi_event *ev);
 static void
 dtvcc_get_visible_windows(struct dtvcc_service *ds, int *cnt, struct dtvcc_window **windows);
+
+
+static vbi_bool
+dtvcc_define_window(struct dtvcc_decoder *dc, struct dtvcc_service *ds, uint8_t *buf);
+
 
 /* EIA 608-B decoder. */
 
@@ -2469,6 +2481,16 @@ dtvcc_stream_event		(struct dtvcc_decoder *	dc,
 	cc_timestamp_reset (&dw->timestamp_c0);
 }
 
+#define SARNOFF_FOOTBALL_708_DEFAULT_HEADER
+
+static vbi_bool dtvcc_default_command	(struct dtvcc_decoder * dc,
+				struct dtvcc_service * ds)
+{
+	uint8_t dw[7] = {0x98, 0x39, 0x0c, 0x19, 0x62, 0x20, 0x0};
+	dtvcc_define_window (dc, ds, dw);
+	return TRUE;
+}
+
 static vbi_bool
 dtvcc_put_char			(struct dtvcc_decoder *	dc,
 				 struct dtvcc_service *	ds,
@@ -2480,9 +2502,21 @@ dtvcc_put_char			(struct dtvcc_decoder *	dc,
 	(void)dc; /* unused */
 
 	dw = ds->curr_window;
+
+#ifdef SARNOFF_FOOTBALL_708_DEFAULT_HEADER
+	//now sarnoff football.ts first line cc not set dtvcc_command, and when stream play from head
+	//sequence number will change, and call dtvcc_reset();so here dw will be null, this line cc will
+	//lost, so we set default command for workaround
+	if (NULL == dw && c == 0x3e) {
+		AM_DEBUG(0, "debug-cc window null! First frame is not set window command, try set default!");
+		dtvcc_default_command(dc, ds);
+		dw = ds->curr_window;
+	}
+#endif
+
 	if (NULL == dw) {
 		ds->error_line = __LINE__;
-		//AM_DEBUG(1, "================ window null !!!!!");
+		AM_DEBUG(0, "debug-cc Error! Dtvcc Window null !");
 		return FALSE;
 	}
 	dw->latest_cmd_cr = 0;
@@ -3694,11 +3728,17 @@ dtvcc_decode_se			(struct dtvcc_decoder *	dc,
 	if (likely (0 != (c & 0x60))) {
 		/* G0/G1 character. */
 		*se_length = 1;
+
+		if (dc->has_q_tone_data) {
+			dc->q_tone[dc->index_q_tone++] = c;
+		}
+
 		return dtvcc_put_char (dc, ds, c);
 	}
 
 	if (0x10 != c) {
 		/* C0/C1 control code. */
+		//AM_DEBUG(0, "debug-cc dtvcc command c:%x", c);
 		return dtvcc_command (dc, ds, se_length,
 				      buf, n_bytes);
 	}
@@ -4535,7 +4575,33 @@ dtvcc_have_start_header(const uint8_t * buf, int cc_count)
 	return FALSE;
 }
 
+/*korean q-tone is timing signal for advertisment, it start with 0f byte following with
+  style data.so we detect one frame if include 0f byte to judge q-tone.*/
+static vbi_bool
+dtvcc_detect_q_tone_data(const uint8_t * buf, int cc_count)
+{
+	unsigned int b0;
+	unsigned int cc_data_1;
+	unsigned int cc_data_2;
+	vbi_bool has_q_tone_data = 0;
+	for (int i = 0; i < cc_count - 1; ++i) {/*last byte is 0xff, so minus 1*/
+		b0 = buf[3 + i * 3];
+		cc_data_1 = buf[4 + i * 3];
+		cc_data_2 = buf[5 + i * 3];
+		if (b0 == 0xfe && cc_data_2 == 0x0f) {//0f q-tone header
+			//AM_DEBUG(0, "debug-cccc have style header, continue!");
+			has_q_tone_data = TRUE;
+			break;
+		}
+	}
+	AM_DEBUG(0, "debug-cc has_q_tone_data:%d", has_q_tone_data);
+
+	return has_q_tone_data;
+}
+
+
 //#define KOREAN_CALC_708_CC_HEADER
+#define KOREAN_DETECT_Q_TONE_DATA
 /* Note pts may be < 0 if no PTS was received. */
 void
 tvcc_decode_data			(struct tvcc_decoder *td,
@@ -4590,6 +4656,10 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		cc_data_2 = buf[5 + i * 3];
 
 		AM_DEBUG(4,"cc type %02x %02x %02x %02x\n", cc_type, cc_valid, cc_data_1, cc_data_2);
+
+#ifdef KOREAN_DETECT_Q_TONE_DATA
+		td->dtvcc.has_q_tone_data = dtvcc_detect_q_tone_data(buf, cc_count);
+#endif
 
 		switch (cc_type) {
 		case NTSC_F1:
