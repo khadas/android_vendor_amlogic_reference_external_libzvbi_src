@@ -2743,18 +2743,18 @@ vbi_format_vt_page(vbi_decoder *vbi,
 	//snprintf (buf, sizeof (buf),
 	if (vbi->vt.use_subtitleserver) {
 		if ((vbi->vt.goto_page >0x99) && (vbi->vt.goto_page <0x900)) {
-			snprintf (buf, sizeof (buf), "P%x	   ", vbi->vt.goto_page);
+			snprintf (buf, sizeof (buf), "P%x    ", vbi->vt.goto_page);
 		} else	if((vbi->vt.goto_page >0) && (vbi->vt.goto_page <0x10)){
 			snprintf (buf, sizeof (buf), "P%x--    ", vbi->vt.goto_page);
 		} else	if(vbi->vt.goto_page == 0){
 			  vbi->vt.goto_page = 0x100;
-			snprintf (buf, sizeof (buf), "P%x	 ", vbi->vt.goto_page);
+			snprintf (buf, sizeof (buf), "P%x    ", vbi->vt.goto_page);
 		} else {
-			snprintf (buf, sizeof (buf), "P%x-	 ", vbi->vt.goto_page);
+			snprintf (buf, sizeof (buf), "P%x-    ", vbi->vt.goto_page);
 		}
 	} else {
 		snprintf (buf, sizeof (buf),
-			"P%x	   ", vtp->pgno);
+			"P%x    ", vtp->pgno);
 	}
 	/* Level 1 formatting */
 
@@ -2841,7 +2841,7 @@ vbi_format_vt_page(vbi_decoder *vbi,
 				break;
 			}
 
-			if (!inside_box && (vtp->flags  & 0xc000))
+			if (!inside_box && (vtp->flags  & 0xc000) && !(row == 0 && column < 4))
 			{
 				 ac.unicode = 0x20;
 				 LOGI("pgno %x row %d, col %d, inside_box", pg->pgno, row, column);
