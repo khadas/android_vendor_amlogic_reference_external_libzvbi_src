@@ -3689,6 +3689,8 @@ dtvcc_decode_se			(struct dtvcc_decoder *	dc,
 				 unsigned int		n_bytes)
 {
 	unsigned int c;
+	char* lang_korea;
+	lang_korea = strstr(dc->lang, "kor");
 
 	c = buf[0];
 	AM_DEBUG(AM_DEBUG_LEVEL, "debug-cc decode_se c:%x,n_bytes:%d", c, n_bytes);
@@ -3716,7 +3718,7 @@ dtvcc_decode_se			(struct dtvcc_decoder *	dc,
 		}
 	}
 
-	if (unlikely (c == 0x18) /*&& lang_korea*/)
+	if (unlikely (c == 0x18) && lang_korea)
 	{
 		*se_length = 3;
 		c = buf[1]<<8|buf[2];
