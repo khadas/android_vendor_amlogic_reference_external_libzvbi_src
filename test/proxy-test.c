@@ -168,7 +168,7 @@ static vbi_bool SwitchTvChannel( vbi_proxy_client * vpc, int channel, int freq )
 
    result = TRUE;
 
-   // get current config of the selected chanel
+   // get current config of the selected channel
    if (channel != -1)
    {
       result = FALSE;

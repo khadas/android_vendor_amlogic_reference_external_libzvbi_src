@@ -1453,7 +1453,7 @@ cc_misc_control_code		(struct cc_decoder *	cd,
 	   f = field (0 -> F1, 1 -> F2)
 	     -- EIA 608-B Section 8.4, 8.5. */
 
-	/* XXX The f flag is intended to detect accidential field
+	/* XXX The f flag is intended to detect accidental field
 	   swapping and we should use it for that purpose. */
 
 	switch (c2 & 15) {
@@ -4577,7 +4577,7 @@ dtvcc_have_start_header(const uint8_t * buf, int cc_count)
 	return FALSE;
 }
 
-/*korean q-tone is timing signal for advertisment, it start with 0f byte following with
+/*korean q-tone is timing signal for advertisement, it start with 0f byte following with
   style data.so we detect one frame if include 0f byte to judge q-tone.*/
 static vbi_bool
 dtvcc_detect_q_tone_data(const uint8_t * buf, int cc_count)

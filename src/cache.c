@@ -1724,7 +1724,7 @@ _vbi_cache_put_page		(vbi_cache *		ca,
 
 		if (old_cp->ref_count > 0) {
 			/* This page is still in use. We remove it from
-			   the cache and mark it for deletion when unref'd.
+			   the cache and mark it for deletion when unref.
 			   old_cp->pri_node remains on ca->referenced. */
 			unlink_node (&old_cp->hash_node);
 
