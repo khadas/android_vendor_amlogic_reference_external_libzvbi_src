@@ -3,7 +3,7 @@
  * New Mexico State University
  *
  * Modifications and fixes for the Zapping 0.5 release by
- * Iñaki García Etxebarrria <garetxe@users.sourceforge.net>
+ * IÃ±aki GarcÃ­a Etxebarrria <garetxe@users.sourceforge.net>
  *
  * Modifications by Michael H. Schimek <mschimek@users.sf.net>
  * for libzvbi 0.1: Added character classes :gfx: and :drcs:,
@@ -721,7 +721,7 @@ static _ure_trie_t cclass_trie[] = {
   {'l', 1, 69, 0},
   {'e', 1, 70, 0},
   {':', 1, 71, _URE_TITLE},
-/* mhs: duplicated, so I dont have to renumber everything */
+/* mhs: duplicated, so I do not have to renumber everything */
   {'f', 1, 77, 0},
   {'r', 2, 73, 0},
   {'a', 1, 74, 0},
