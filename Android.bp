@@ -134,7 +134,7 @@ cc_library_static {
 cc_library_shared {
     vendor: true,
     name: "libzvbi",
-    compile_multilib: "32",
+    compile_multilib: "both",
 
     arch: {
         x86: {
