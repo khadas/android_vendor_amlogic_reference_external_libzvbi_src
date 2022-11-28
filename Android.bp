@@ -127,7 +127,6 @@ cc_library_static {
     ],
     header_libs: [
         "libicuuc_headers",
-        "libam_adp_headers",
     ],
 }
 
@@ -159,8 +158,6 @@ cc_library_shared {
        "libicui18n_product",
        "libicuuc_product",
        "libicuuc_stubdata_product",
-       "libam_adp_static",
-       "libam_mw_static",
     ],
 
 }
