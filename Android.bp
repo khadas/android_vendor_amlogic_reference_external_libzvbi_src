@@ -112,8 +112,8 @@ cc_library_static {
         "-DPACKAGE=\"zvbi\"",
         "-DVERSION=\"0.2.33\"",
         "-DANDROID",
+        "-Wno-error=tautological-pointer-compare",
     ],
-    clang_cflags: ["-Wno-error=tautological-pointer-compare"],
 
     arch: {
         arm: {
