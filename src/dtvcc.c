@@ -4712,7 +4712,7 @@ dtvcc_detect_q_tone_data(const uint8_t * buf, int cc_count)
 			break;
 		}
 	}
-	AM_DEBUG(0, "debug-cc has_q_tone_data:%d", has_q_tone_data);
+	//AM_DEBUG(0, "debug-cc has_q_tone_data:%d", has_q_tone_data);
 
 	return has_q_tone_data;
 }
@@ -4774,7 +4774,7 @@ tvcc_decode_data			(struct tvcc_decoder *td,
 		cc_data_1 = buf[4 + i * 3];
 		cc_data_2 = buf[5 + i * 3];
 
-		AM_DEBUG(4,"cc type %02x %02x %02x %02x\n", cc_type, cc_valid, cc_data_1, cc_data_2);
+		//AM_DEBUG(4,"cc type %02x %02x %02x %02x\n", cc_type, cc_valid, cc_data_1, cc_data_2);
 
 #ifdef KOREAN_DETECT_Q_TONE_DATA
 		td->dtvcc.has_q_tone_data = dtvcc_detect_q_tone_data(buf, cc_count);
